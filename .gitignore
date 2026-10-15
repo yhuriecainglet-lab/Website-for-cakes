@@ -1,0 +1,7 @@
+_*.ps1
+_validate.py
+_server.ps1
+_check_*.ps1
+*.tmp
+.DS_Store
+Thumbs.db
