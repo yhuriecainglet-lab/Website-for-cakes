@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Kookielicious Cakes by Lykz | Admin Dashboard</title>
+    <link rel="icon" href="images/306608548_482665013871992_4321595222167333757_n.jpg" type="image/jpeg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:wght@700;900&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+    <div class="dash-app">
+
+        <!-- ===== LOGIN PAGE ===== -->
+        <section class="dash-login-page" id="dashLoginPage">
+            <div class="dash-login-card">
+                <div class="dash-login-header">
+                    <img src="images/306608548_482665013871992_4321595222167333757_n.jpg" alt="Kookielicious Cakes by Lykz logo" class="dash-login-logo">
+                    <h1 class="dash-login-brand">Kookielicious Cakes Admin</h1>
+                </div>
+                <div class="dash-login-form" id="dashLoginFormContainer"></div>
+            </div>
+        </section>
+
+        <!-- ===== DASHBOARD SHELL ===== -->
+        <section class="dash-shell" id="dashShell" hidden>
+
+            <!-- Mobile top bar -->
+            <header class="dash-topbar">
+                <button class="dash-menu-toggle" id="dashMenuToggle" aria-label="Open menu">&#9776;</button>
+                <a href="#" class="dash-topbar-brand" id="dashTopbarBrand">
+                    <img src="images/306608548_482665013871992_4321595222167333757_n.jpg" alt="logo" class="dash-topbar-logo">
+                    <span class="dash-topbar-brand-text">Kookielicious Cakes</span>
+                </a>
+                <div class="dash-topbar-user" id="dashTopbarUser"></div>
+            </header>
+
+            <!-- Sidebar -->
+            <aside class="dash-sidebar" id="dashSidebar">
+                <div class="dash-sidebar-header">
+                    <img src="images/306608548_482665013871992_4321595222167333757_n.jpg" alt="logo" class="dash-sidebar-logo">
+                    <span class="dash-sidebar-brand">Kookielicious Cakes</span>
+                </div>
+                <nav class="dash-nav">
+                    <a href="#" class="dash-nav-item dash-nav-active" data-page="overview">
+                        <svg class="dash-nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                        Overview
+                    </a>
+                    <a href="#" class="dash-nav-item" data-page="orders">
+                        <svg class="dash-nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="3" x2="8" y2="21"/><line x1="3" y1="8" x2="21" y2="8"/><line x1="3" y1="14" x2="21" y2="14"/><line x1="16" y1="3" x2="16" y2="21"/></svg>
+                        Orders
+                    </a>
+                    <a href="#" class="dash-nav-item" data-page="gallery">
+                        <svg class="dash-nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="3"/></svg>
+                        Gallery
+                    </a>
+                    <a href="#" class="dash-nav-item" data-page="settings">
+                        <svg class="dash-nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1h-12a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 1.51-1V4a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V19a1.65 1.65 0 0 0 1.51 1h12a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l.06.06a1.65 1.65 0 0 0-.33 1.82"/></svg>
+                        Settings
+                    </a>
+                </nav>
+                <div class="dash-nav-footer">
+                    <a href="#" class="dash-nav-item" data-page="website">
+                        <svg class="dash-nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                        View Website
+                    </a>
+                    <button class="dash-nav-item dash-nav-logout" id="dashNavLogout">
+                        <svg class="dash-nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        Log out
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main content -->
+            <div class="dash-main" id="dashMain">
+                <div class="dash-overlay" id="dashOverlay"></div>
+
+                <!-- ===== OVERVIEW ===== -->
+                <section class="dash-page" id="dashPageOverview">
+                    <div class="dash-page-header">
+                        <div>
+                            <h2 class="dash-page-title">Overview</h2>
+                            <p class="dash-page-subtitle">A quick look at your cake orders</p>
+                        </div>
+                    </div>
+                    <div class="dash-stats" id="dashStats"></div>
+                    <div class="dash-section-card">
+                        <div class="dash-section-head"><h3>Orders per Month</h3><span class="dash-sub">Last 6 months</span></div>
+                        <div class="dash-chart" id="dashChart"></div>
+                        <p class="dash-empty" id="dashChartEmpty" style="display:none;">No orders yet. Add your first order.</p>
+                    </div>
+                    <div class="dash-section-card">
+                        <div class="dash-section-head"><h3>Upcoming Orders</h3></div>
+                        <div class="dash-list" id="dashUpcoming"></div>
+                        <p class="dash-empty" id="dashUpcomingEmpty" style="display:none;">No upcoming orders.</p>
+                    </div>
+                </section>
+
+                <!-- ===== ORDERS ===== -->
+                <section class="dash-page" id="dashPageOrders">
+                    <div class="dash-page-header">
+                        <div>
+                            <h2 class="dash-page-title">Orders</h2>
+                            <p class="dash-page-subtitle">Track and manage cake orders</p>
+                        </div>
+                        <button class="dash-btn dash-btn-primary" id="dashAddOrder">&#43; Add Order</button>
+                    </div>
+                    <div class="dash-orders-bar">
+                        <div class="dash-search">
+                            <input type="search" id="dashOrderSearch" placeholder="Search customer, contact, order no&#8230;">
+                        </div>
+                        <select class="dash-select" id="dashOrderFilter">
+                            <option value="">All Statuses</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Confirmed">Confirmed</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Ready">Ready</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="dash-table-wrap">
+                        <table class="dash-table" id="dashOrdersTable">
+                            <thead>
+                                <tr>
+                                    <th class="dash-sortable" data-sort="eventDate">Order No</th>
+                                    <th>Customer</th>
+                                    <th>Contact</th>
+                                    <th>Event Date</th>
+                                    <th>Cake Type</th>
+                                    <th>Total</th>
+                                    <th>Balance</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashOrdersBody"></tbody>
+                        </table>
+                    </div>
+                    <p class="dash-empty" id="dashOrdersEmpty" style="display:none;">No orders yet. Add your first order.</p>
+                    <button class="dash-btn dash-btn-outline dash-btn-sm" id="dashExportCsv">Export CSV</button>
+                </section>
+
+                <!-- ===== GALLERY MANAGER ===== -->
+                <section class="dash-page" id="dashPageGallery">
+                    <div class="dash-page-header">
+                        <div>
+                            <h2 class="dash-page-title">Gallery</h2>
+                            <p class="dash-page-subtitle">Manage your cake gallery</p>
+                        </div>
+                        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;">
+                            <button class="dash-btn dash-btn-primary" id="dashAddCake">&#43; Add Cake</button>
+                            <button class="dash-btn dash-btn-outline dash-btn-sm" id="dashResetGallery">Reset to Default Gallery</button>
+                        </div>
+                    </div>
+                    <div class="dash-gallery-grid" id="dashGalleryGrid"></div>
+                    <p class="dash-empty" id="dashGalleryEmpty" style="display:none;">No cakes yet. Add your first cake.</p>
+                </section>
+
+                <!-- ===== SETTINGS ===== -->
+                <section class="dash-page" id="dashPageSettings">
+                    <div class="dash-page-header">
+                        <div>
+                            <h2 class="dash-page-title">Settings</h2>
+                            <p class="dash-page-subtitle">Account and data settings</p>
+                        </div>
+                    </div>
+                    <div class="dash-section-card">
+                        <h3>Change Password</h3>
+                        <p>Update your admin login password.</p>
+                        <form id="dashPasswordForm">
+                            <div class="dash-form-group">
+                                <label for="dashPassCurrent">Current Password</label>
+                                <input type="password" id="dashPassCurrent" required autocomplete="current-password">
+                            </div>
+                            <div class="dash-form-group">
+                                <label for="dashPassNew">New Password (min 6 characters)</label>
+                                <input type="password" id="dashPassNew" required autocomplete="new-password">
+                            </div>
+                            <div class="dash-form-group">
+                                <label for="dashPassConfirm">Confirm New Password</label>
+                                <input type="password" id="dashPassConfirm" required autocomplete="new-password">
+                            </div>
+                            <p class="dash-error" id="dashPassError" style="display:none;"></p>
+                            <button type="submit" class="dash-btn dash-btn-primary">Save Changes</button>
+                        </form>
+                    </div>
+                    <div class="dash-section-card">
+                        <h3>Backup &amp; Restore</h3>
+                        <p>Export your gallery and orders to a single JSON file, or restore from a backup.</p>
+                        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center; margin-bottom:0.5rem;">
+                            <button class="dash-btn dash-btn-outline" id="dashExportBackup">Export Backup</button>
+                            <span style="color:rgba(248,241,227,0.7);font-size:0.85rem;">or</span>
+                            <label style="display:inline-flex;align-items:center;gap:0.4rem;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:0.6rem 1rem;cursor:pointer;font-size:0.9rem;">
+                                Import Backup
+                                <input type="file" id="dashImportFile" accept=".json" style="display:none;">
+                            </label>
+                        </div>
+                        <p class="dash-hint">Backup file: kookielicious-backup.json (contains gallery + orders)</p>
+                    </div>
+                    <div class="dash-section-card dash-danger">
+                        <h3>Danger Zone</h3>
+                        <button class="dash-btn dash-btn-outline dash-btn-sm" id="dashDeleteAllOrders">Delete All Orders</button>
+                        <p class="dash-hint" style="margin-top:0.5rem;">This cannot be undone. Orders only; your gallery is unaffected.</p>
+                    </div>
+                    <div class="dash-note">
+                        <p><strong>Note:</strong> This dashboard saves data only in this browser on this device. Use Export Backup regularly. Changes made here will not appear for other visitors on the live website until a real database is added.</p>
+                    </div>
+                </section>
+
+                <!-- ===== MODAL: ADD / EDIT ORDER ===== -->
+                <div class="dash-modal hidden" id="dashOrderModal">
+                    <div class="dash-modal-panel">
+                        <button class="dash-modal-close" id="dashOrderModalClose">&#215;</button>
+                        <div class="dash-modal-header"><h3 id="dashOrderModalTitle">Add Order</h3></div>
+                        <div class="dash-modal-body">
+                            <form id="dashOrderForm">
+                                <input type="hidden" id="dashOrderEditId">
+                                <div class="dash-form-group">
+                                    <label for="dashOrderCustomer">Customer Name <span style="color:var(--status-cancelled);">*</span></label>
+                                    <input type="text" id="dashOrderCustomer" required>
+                                </div>
+                                <div class="dash-form-group">
+                                    <label for="dashOrderContact">Contact Number <span style="color:var(--status-cancelled);">*</span></label>
+                                    <input type="tel" id="dashOrderContact" required>
+                                </div>
+                                <div class="dash-form-group">
+                                    <label for="dashOrderEventDate">Event Date <span style="color:var(--status-cancelled);">*</span></label>
+                                    <input type="date" id="dashOrderEventDate" required>
+                                </div>
+                                <div class="dash-form-group">
+                                    <label for="dashOrderCakeType">Cake Type <span style="color:var(--status-cancelled);">*</span></label>
+                                    <select id="dashOrderCakeType" required>
+                                        <option value="" disabled selected>Select cake type</option>
+                                        <option value="Birthday Cake">Birthday Cake</option>
+                                        <option value="Kids Theme Cake">Kids Theme Cake</option>
+                                        <option value="Christening Set">Christening Set</option>
+                                        <option value="Cupcakes">Cupcakes</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="dash-form-group">
+                                    <label for="dashOrderDetails">Cake Details / Theme</label>
+                                    <textarea id="dashOrderDetails" rows="3"></textarea>
+                                </div>
+                                <div class="dash-form-group">
+                                    <label for="dashOrderTotal">Total Amount (&#8369;)</label>
+                                    <input type="number" id="dashOrderTotal" min="0" step="0.01" value="0">
+                                </div>
+                                <div class="dash-form-group">
+                                    <label for="dashOrderDownpayment">Downpayment (&#8369;)</label>
+                                    <input type="number" id="dashOrderDownpayment" min="0" step="0.01" value="0">
+                                </div>
+                                <div class="dash-form-group">
+                                    <label for="dashOrderStatus">Status</label>
+                                    <select id="dashOrderStatus">
+                                        <option value="Pending">Pending</option>
+                                        <option value="Confirmed">Confirmed</option>
+                                        <option value="In Progress">In Progress</option>
+                                        <option value="Ready">Ready</option>
+                                        <option value="Completed">Completed</option>
+                                        <option value="Cancelled">Cancelled</option>
+                                    </select>
+                                </div>
+                                <p class="dash-error" id="dashOrderError" style="display:none;"></p>
+                                <div class="dash-modal-actions">
+                                    <button type="button" class="dash-btn dash-btn-ghost" id="dashOrderModalCancel">Cancel</button>
+                                    <button type="submit" class="dash-btn dash-btn-primary">Save Order</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== MODAL: GENERIC CONFIRM ===== -->
+                <div class="dash-modal hidden" id="dashConfirmModal">
+                    <div class="dash-modal-panel">
+                        <button class="dash-modal-close" id="dashConfirmClose">&#215;</button>
+                        <div class="dash-modal-header"><h3 id="dashConfirmTitle">Confirm</h3></div>
+                        <div class="dash-modal-body"><p id="dashConfirmMessage"></p></div>
+                        <div class="dash-modal-actions">
+                            <button type="button" class="dash-btn dash-btn-ghost" id="dashConfirmCancel">Cancel</button>
+                            <button type="button" class="dash-btn dash-btn-primary" id="dashConfirmOk">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== MODAL: ADD / EDIT CAKE ===== -->
+                <div class="dash-modal hidden" id="dashGalleryModal">
+                    <div class="dash-modal-panel">
+                        <button class="dash-modal-close" id="dashGalleryModalClose">&#215;</button>
+                        <div class="dash-modal-header"><h3 id="dashGalleryModalTitle">Add Cake</h3></div>
+                        <div class="dash-modal-body">
+                            <form id="dashGalleryForm">
+                                <input type="hidden" id="dashGalleryEditId">
+                                <div class="dash-form-group">
+                                    <label for="dashGalleryImage">Image <span id="dashGalleryImageReq" style="color:var(--status-cancelled);">*</span></label>
+                                    <input type="file" id="dashGalleryImage" accept="image/*">
+                                    <img id="dashGalleryPreview" src="" alt="preview" style="display:none;margin-top:0.5rem;width:100%;max-width:220px;height:220px;object-fit:cover;border:1px solid var(--gold);border-radius:12px;background:var(--black);">
+                                    <p class="dash-hint">Image is resized to max 1000px width and saved as JPEG.</p>
+                                </div>
+                                <div class="dash-form-group">
+                                    <label for="dashGalleryTitle">Title</label>
+                                    <input type="text" id="dashGalleryTitle" required>
+                                </div>
+                                <div class="dash-form-group">
+                                    <label for="dashGalleryCategory">Category</label>
+                                    <select id="dashGalleryCategory">
+                                        <option value="birthday">Birthday</option>
+                                        <option value="kids">Kids</option>
+                                        <option value="christening">Christening</option>
+                                        <option value="cupcakes">Cupcakes</option>
+                                        <option value="elegant">Elegant</option>
+                                    </select>
+                                </div>
+                                <div class="dash-form-group dash-toggle">
+                                    <input type="checkbox" id="dashGalleryVisible" checked>
+                                    <span>Visible on website</span>
+                                </div>
+                                <p class="dash-error" id="dashGalleryError" style="display:none;"></p>
+                                <div class="dash-modal-actions">
+                                    <button type="button" class="dash-btn dash-btn-ghost" id="dashGalleryModalCancel">Cancel</button>
+                                    <button type="submit" class="dash-btn dash-btn-primary">Save Cake</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </div>
+    <script src="js/dashboard-data.js"></script>
+    <script defer src="js/dashboard.js"></script>
+</body>
+</html>
