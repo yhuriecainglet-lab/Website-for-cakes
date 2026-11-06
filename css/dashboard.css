@@ -623,6 +623,13 @@ body {
     background: var(--status-cancelled);
 }
 
+.dash-badge-new {
+    background: var(--gold);
+    color: #0b0b0b;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+}
+
 /* Empty states */
 
 .dash-empty {

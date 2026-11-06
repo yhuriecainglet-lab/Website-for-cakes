@@ -1,108 +1,151 @@
-/* ===== Kookielicious Cakes by Lykz - Dashboard Data Helpers =====
-   Storage helpers for the admin dashboard. Everything lives in localStorage
-   (sessionStorage only holds the login flag). Every read and write is wrapped
-   in try/catch so the app never crashes if storage is empty, full, or blocked.
+/* ===== Kookielicious Cakes by Lykz - Dashboard Data Helpers (Supabase) =====
+   Async wrappers around Supabase calls for gallery and orders.
+   Every call checks the returned { data, error } and is wrapped in try/catch.
 */
 
-const KC_STORAGE = {
-    GALLERY: 'kc_gallery',
-    ORDERS: 'kc_orders',
-    ADMIN: 'kc_admin',
-    SESSION: 'kc_session'
-};
+/* Image resize helper: max width 1400px, JPEG quality 0.85 */
+async function resizeImage(file, maxWidth, quality) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            let w = img.width;
+            let h = img.height;
+            if (w > maxWidth) {
+                h = Math.round((h * maxWidth) / w);
+                w = maxWidth;
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = URL.createObjectURL(file);
+    });
+}
 
-/* Default gallery mirrored from the public site (exact titles, paths, categories). */
-const DEFAULT_GALLERY = [
-    { id: 'g1', src: 'images/476964397_1734633784061425_9081176933088120602_n.jpg', title: 'Pink & Blue Christening Set', category: 'christening', visible: true },
-    { id: 'g2', src: 'images/211210521_915464542645024_5184086500641054154_n.jpg', title: 'Rainbow Unicorn Cake', category: 'birthday', visible: true },
-    { id: 'g3', src: 'images/470229193_1697571481100989_454437787587739516_n.jpg', title: 'Under the Sea Cupcakes', category: 'cupcakes', visible: true },
-    { id: 'g4', src: 'images/470232715_1697571101101027_7207012082697027500_n.jpg', title: 'Little Mermaid Cake', category: 'kids', visible: true },
-    { id: 'g5', src: 'images/472632910_1710292949828842_8176161407709832996_n.jpg', title: 'Baby Dino 2nd Birthday Cake', category: 'kids', visible: true },
-    { id: 'g6', src: 'images/472505326_1710292906495513_5377312948419610032_n.jpg', title: 'Red Roses & Gold Leaf 18th Birthday Cake', category: 'elegant', visible: true },
-    { id: 'g7', src: 'images/473597945_1716231842568286_6014189328397794439_n.jpg', title: 'Chocolate Pretzel Loaded Cake', category: 'birthday', visible: true }
-];
-
-function _load(key, fallback) {
+/* Gallery helpers */
+async function fetchGallery() {
     try {
-        const raw = localStorage.getItem(key);
-        if (raw === null) return fallback;
-        return JSON.parse(raw);
+        const { data, error } = await sb.from('gallery').select('*').order('sort_order');
+        if (error) throw error;
+        return data || [];
     } catch (err) {
-        return fallback;
+        return [];
     }
 }
 
-function _save(key, value) {
+async function saveGalleryItem(item) {
     try {
-        localStorage.setItem(key, JSON.stringify(value));
-        return true;
-    } catch (err) {
-        return false;
-    }
-}
-
-/* Gallery */
-function getGallery() {
-    const list = _load(KC_STORAGE.GALLERY, null);
-    return Array.isArray(list) && list.length > 0 ? list : [...DEFAULT_GALLERY];
-}
-
-function saveGallery(list) {
-    return _save(KC_STORAGE.GALLERY, list);
-}
-
-/* Orders */
-function getOrders() {
-    return _load(KC_STORAGE.ORDERS, []);
-}
-
-function saveOrders(list) {
-    return _save(KC_STORAGE.ORDERS, list);
-}
-
-/* Unique id */
-function uid() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
-}
-
-/* Admin account */
-function getAdmin() {
-    return _load(KC_STORAGE.ADMIN, null);
-}
-
-function getDefaultGallery() {
-    return [...DEFAULT_GALLERY];
-}
-
-function saveAdmin(admin) {
-    return _save(KC_STORAGE.ADMIN, admin);
-}
-
-/* Login flag (session only) */
-function sessionActive() {
-    try {
-        return sessionStorage.getItem(KC_STORAGE.SESSION) === '1';
-    } catch (err) {
-        return false;
-    }
-}
-
-function setSession(active) {
-    try {
-        if (active) {
-            sessionStorage.setItem(KC_STORAGE.SESSION, '1');
+        const payload = {
+            title: item.title,
+            category: item.category,
+            image_url: item.image_url,
+            storage_path: item.storage_path || null,
+            visible: item.visible !== undefined ? item.visible : true,
+            sort_order: item.sort_order
+        };
+        if (item.id) {
+            const { error } = await sb.from('gallery').update(payload).eq('id', item.id);
+            if (error) throw error;
+            return item.id;
         } else {
-            sessionStorage.removeItem(KC_STORAGE.SESSION);
+            const { data, error } = await sb.from('gallery').insert(payload).select('id').single();
+            if (error) throw error;
+            return data.id;
         }
     } catch (err) {
-        // ignore
+        throw err;
     }
 }
 
-/* SHA-256 hash of a string (never store plain passwords) */
-async function sha256(text) {
-    const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-    return Array.from(new Uint8Array(buffer))
-        .map((byte) => byte.toString(16).padStart(2, '0'))
-        .join('');
+async function deleteGalleryItem(id, storagePath) {
+    try {
+        const { error } = await sb.from('gallery').delete().eq('id', id);
+        if (error) throw error;
+        if (storagePath) {
+            try {
+                await sb.storage.from('cake-images').remove([storagePath]);
+            } catch (e) {
+                // storage delete failure shouldn't block row delete
+            }
+        }
+    } catch (err) {
+        throw err;
+    }
+}
+
+/* Order helpers */
+async function fetchOrders() {
+    try {
+        const { data, error } = await sb.from('orders').select('*').order('event_date', { ascending: true });
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        return [];
+    }
+}
+
+async function saveOrder(order) {
+    try {
+        const payload = {
+            order_no: order.order_no,
+            customer: order.customer,
+            contact: order.contact,
+            event_date: order.event_date,
+            cake_type: order.cake_type,
+            details: order.details || '',
+            total_amount: order.total_amount || 0,
+            downpayment: order.downpayment || 0,
+            status: order.status || 'Pending',
+            source: order.source || 'dashboard'
+        };
+        if (order.id) {
+            const { error } = await sb.from('orders').update(payload).eq('id', order.id);
+            if (error) throw error;
+            return order.id;
+        } else {
+            const { data, error } = await sb.from('orders').insert(payload).select().single();
+            if (error) throw error;
+            return data;
+        }
+    } catch (err) {
+        throw err;
+    }
+}
+
+async function deleteOrder(id) {
+    try {
+        const { error } = await sb.from('orders').delete().eq('id', id);
+        if (error) throw error;
+    } catch (err) {
+        throw err;
+    }
+}
+
+async function deleteAllOrders() {
+    try {
+        const { error } = await sb.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        if (error) throw error;
+    } catch (err) {
+        throw err;
+    }
+}
+
+/* Backup export */
+async function exportBackup() {
+    try {
+        const { data: gallery } = await sb.from('gallery').select('*');
+        const { data: orders } = await sb.from('orders').select('*');
+        const backup = { gallery: gallery || [], orders: orders || [] };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'kookielicious-backup.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        throw err;
+    }
 }

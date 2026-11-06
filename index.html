@@ -16,6 +16,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:wght@700;900&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="js/supabase-config.js"></script>
     <link rel="stylesheet" href="css/style.css">
     <script defer src="js/script.js"></script>
     <script type="application/ld+json">
@@ -175,7 +177,9 @@
                 <button class="filter-btn" data-filter="cupcakes">Cupcakes</button>
                 <button class="filter-btn" data-filter="elegant">Elegant</button>
             </div>
-            <div class="gallery-grid">
+            <div class="gallery-loading" id="galleryLoading" style="display:none;">Loading cakes...</div>
+            <p class="gallery-empty" id="galleryEmpty" style="display:none; text-align:center; color:rgba(248,241,227,0.7); padding:2rem;">New cakes coming soon</p>
+            <div class="gallery-grid" id="galleryGrid">
                 <div class="gallery-card" data-category="christening">
                     <img src="images/476964397_1734633784061425_9081176933088120602_n.jpg" alt="Pink & Blue Christening Set - round white cake with star toppers and pink/blue cupcakes" loading="lazy">
                     <div class="gallery-overlay">
@@ -278,7 +282,8 @@
                         <label for="cakeDetails">Cake Details / Theme *</label>
                         <textarea id="cakeDetails" name="cakeDetails" rows="4" required></textarea>
                     </div>
-                    <button type="submit" class="btn btn-filled form-btn">Send Inquiry</button>
+                    <input type="text" name="website" style="display:none; position:absolute; left:-9999px; width:1px; height:1px;" tabindex="-1" autocomplete="off">
+                <button type="submit" class="btn btn-filled form-btn">Send Inquiry</button>
                 </form>
                 <p class="form-success" id="formSuccess" style="display:none;">
                     Thank you! Your email app will open so you can send your inquiry.

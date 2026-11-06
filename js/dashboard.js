@@ -1,7 +1,6 @@
-/* ===== Kookielicious Cakes by Lykz - Admin Dashboard =====
-   Client-side login only: the username and a password hash are kept in
-   localStorage and the login flag in sessionStorage. This is NOT real
-   security; it only prevents casual access on this device.
+/* ===== Kookielicious Cakes by Lykz - Admin Dashboard (Supabase) =====
+   Client-side login via Supabase Auth. All data stored in Supabase.
+   Not real security for public use; keeps dashboard access controlled on this device.
 */
 
 (function () {
@@ -26,7 +25,10 @@
     let sortDir = 'asc';
     let confirmCallback = null;
     let editingGalleryId = null;
-    let galleryNewSrc = null;
+    let galleryNewFile = null;
+    let galleryOldStoragePath = null;
+    let autoRefreshTimer = null;
+    let ordersData = [];
 
     /* ===== HELPERS ===== */
     function escapeHtml(text) {
@@ -50,71 +52,35 @@
         return Number(value || 0).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' });
     }
 
-    function readFile(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(file);
-        });
-    }
-
-    function resizeImage(dataUrl, maxWidth, quality) {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-                let w = img.width;
-                let h = img.height;
-                if (w > maxWidth) {
-                    h = Math.round((h * maxWidth) / w);
-                    w = maxWidth;
-                }
-                const canvas = document.createElement('canvas');
-                canvas.width = w;
-                canvas.height = h;
-                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                resolve(canvas.toDataURL('image/jpeg', quality));
-            };
-            img.src = dataUrl;
-        });
+    function orderNoDisplay(orderNo) {
+        return 'KC-' + String(orderNo || 0).padStart(4, '0');
     }
 
     function openModal(modal) { modal.classList.remove('hidden'); }
     function closeModal(modal) { modal.classList.add('hidden'); }
 
-    /* ===== AUTH ===== */
-    function renderSetup() {
-        loginContainer.innerHTML = `
-            <h2>Set up your admin account</h2>
-            <p>Create the username and password for this dashboard.</p>
-            <form id="dashSetupForm">
-                <div class="dash-form-group">
-                    <label for="dashSetupUser">Username</label>
-                    <input type="text" id="dashSetupUser" required autocomplete="username">
-                </div>
-                <div class="dash-form-group">
-                    <label for="dashSetupPass">Password (min 6 characters)</label>
-                    <input type="password" id="dashSetupPass" required minlength="6" autocomplete="new-password">
-                </div>
-                <div class="dash-form-group">
-                    <label for="dashSetupConfirm">Confirm Password</label>
-                    <input type="password" id="dashSetupConfirm" required autocomplete="new-password">
-                </div>
-                <p class="dash-error" id="dashSetupError"></p>
-                <button type="submit" class="dash-btn dash-btn-primary" style="width:100%">Create account</button>
-            </form>
-        `;
-        document.getElementById('dashSetupForm').addEventListener('submit', handleSetup);
+    function showPageError(containerId, message) {
+        const el = document.getElementById(containerId);
+        if (el) {
+            el.textContent = message;
+            el.style.display = 'block';
+        }
     }
 
+    function hidePageError(containerId) {
+        const el = document.getElementById(containerId);
+        if (el) el.style.display = 'none';
+    }
+
+    /* ===== AUTH ===== */
     function renderLogin() {
         loginContainer.innerHTML = `
-            <h2>Admin Login</h2>
-            <p>Welcome back. Sign in to manage your cake business.</p>
             <form id="dashLoginForm">
+                <h2>Admin Login</h2>
+                <p>Sign in to manage your cake business.</p>
                 <div class="dash-form-group">
-                    <label for="dashLoginUser">Username</label>
-                    <input type="text" id="dashLoginUser" required autocomplete="username">
+                    <label for="dashLoginEmail">Email</label>
+                    <input type="email" id="dashLoginEmail" required autocomplete="username">
                 </div>
                 <div class="dash-form-group">
                     <label for="dashLoginPass">Password</label>
@@ -127,69 +93,40 @@
         document.getElementById('dashLoginForm').addEventListener('submit', handleLogin);
     }
 
-    function renderAuth() {
-        getAdmin() ? renderLogin() : renderSetup();
-    }
-
-    async function handleSetup(e) {
+    async function handleLogin(e) {
         e.preventDefault();
-        const user = document.getElementById('dashSetupUser').value.trim();
-        const pass = document.getElementById('dashSetupPass').value;
-        const confirm = document.getElementById('dashSetupConfirm').value;
-        const errorEl = document.getElementById('dashSetupError');
-        if (!user) {
-            errorEl.textContent = 'Please enter a username';
-            errorEl.style.display = 'block';
-            return;
-        }
-        if (pass.length < 6) {
-            errorEl.textContent = 'Password must be at least 6 characters';
-            errorEl.style.display = 'block';
-            return;
-        }
-        if (pass !== confirm) {
-            errorEl.textContent = 'Passwords do not match';
+        const email = document.getElementById('dashLoginEmail').value.trim();
+        const password = document.getElementById('dashLoginPass').value;
+        const errorEl = document.getElementById('dashLoginError');
+        if (!email || !password) {
+            errorEl.textContent = 'Please enter email and password';
             errorEl.style.display = 'block';
             return;
         }
         try {
-            const hash = await sha256(pass);
-            saveAdmin({ username: user, passwordHash: hash });
-            setSession(true);
-            openDashboard();
+            const { error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) throw error;
         } catch (err) {
-            errorEl.textContent = 'Could not save account: ' + err.message;
+            errorEl.textContent = 'Incorrect email or password';
             errorEl.style.display = 'block';
         }
-    }
-
-    async function handleLogin(e) {
-        e.preventDefault();
-        const user = document.getElementById('dashLoginUser').value.trim();
-        const pass = document.getElementById('dashLoginPass').value;
-        const admin = getAdmin();
-        const errorEl = document.getElementById('dashLoginError');
-        if (!admin || admin.username !== user || (await sha256(pass)) !== admin.passwordHash) {
-            errorEl.textContent = 'Incorrect username or password';
-            errorEl.style.display = 'block';
-            return;
-        }
-        setSession(true);
-        openDashboard();
-    }
-
-    function openDashboard() {
-        loginPage.hidden = true;
-        shell.hidden = false;
-        topbarUser.textContent = (getAdmin() || {}).username || '';
-        showPage('overview');
     }
 
     function doLogout() {
-        setSession(false);
-        shell.hidden = true;
-        loginPage.hidden = false;
-        renderAuth();
+        sb.auth.signOut();
+    }
+
+    function setAuthUI(authenticated, user) {
+        if (authenticated) {
+            loginPage.hidden = true;
+            shell.hidden = false;
+            topbarUser.textContent = user ? (user.email || '') : '';
+            showPage('overview');
+        } else {
+            shell.hidden = true;
+            loginPage.hidden = false;
+            renderLogin();
+        }
     }
 
     /* ===== PAGES ===== */
@@ -210,6 +147,7 @@
         });
         document.getElementById('dashMain').scrollTop = 0;
         renderCurrentPage();
+        startAutoRefreshIfNeeded(pageId);
         closeSidebar();
     }
 
@@ -238,6 +176,24 @@
         overlay.classList.remove('dash-overlay-open');
     }
 
+    /* ===== AUTO REFRESH ===== */
+    function startAutoRefreshIfNeeded(pageId) {
+        stopAutoRefresh();
+        if (pageId === 'orders' || pageId === 'overview') {
+            autoRefreshTimer = setInterval(() => {
+                if (pageId === 'orders') renderOrders();
+                else if (pageId === 'overview') renderOverview();
+            }, 30000);
+        }
+    }
+
+    function stopAutoRefresh() {
+        if (autoRefreshTimer) {
+            clearInterval(autoRefreshTimer);
+            autoRefreshTimer = null;
+        }
+    }
+
     /* ===== OVERVIEW ===== */
     function countUpcoming(orders) {
         const today = new Date();
@@ -246,21 +202,22 @@
         limit.setDate(today.getDate() + 7);
         return orders.filter((o) => {
             if (o.status === 'Completed' || o.status === 'Cancelled') return false;
-            const d = new Date(o.eventDate);
+            const d = new Date(o.event_date);
             if (isNaN(d)) return false;
             d.setHours(0, 0, 0, 0);
             return d >= today && d <= limit;
         }).length;
     }
 
-    function renderOverview() {
-        const orders = getOrders();
+    async function renderOverview() {
+        const orders = await fetchOrders();
+        ordersData = orders;
         const total = orders.length;
         const pending = orders.filter((o) => o.status === 'Pending').length;
         const upcoming = countUpcoming(orders);
         const sales = orders
             .filter((o) => o.status === 'Completed')
-            .reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+            .reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
 
         document.getElementById('dashStats').innerHTML = `
             <div class="dash-stat-card"><div class="dash-stat-label">Total Orders</div><div class="dash-stat-value">${total}</div></div>
@@ -279,7 +236,7 @@
         const counts = {};
         months.forEach((m) => { counts[m.key] = 0; });
         orders.forEach((o) => {
-            const d = new Date(o.createdAt || o.eventDate);
+            const d = new Date(o.created_at || o.event_date);
             if (isNaN(d)) return;
             const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
             if (counts[key] !== undefined) counts[key]++;
@@ -305,12 +262,12 @@
         const upcomingList = orders
             .filter((o) => {
                 if (o.status === 'Completed' || o.status === 'Cancelled') return false;
-                const d = new Date(o.eventDate);
+                const d = new Date(o.event_date);
                 if (isNaN(d)) return false;
                 d.setHours(0, 0, 0, 0);
                 return d >= today && d <= limit;
             })
-            .sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate))
+            .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
             .slice(0, 5);
         const upcomingEl = document.getElementById('dashUpcoming');
         const upcomingEmpty = document.getElementById('dashUpcomingEmpty');
@@ -322,8 +279,8 @@
             upcomingEl.innerHTML = upcomingList.map((o) => `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0;border-bottom:1px solid rgba(212,175,55,0.2);">
                     <div>
-                        <div style="font-weight:600;color:var(--gold-light);">${formatDate(o.eventDate)}</div>
-                        <div style="color:var(--cream);font-size:0.9rem;">${escapeHtml(o.customer)} &#8226; ${escapeHtml(o.cakeType)}</div>
+                        <div style="font-weight:600;color:var(--gold-light);">${formatDate(o.event_date)}</div>
+                        <div style="color:var(--cream);font-size:0.9rem;">${escapeHtml(o.customer)} &#8226; ${escapeHtml(o.cake_type)}</div>
                     </div>
                     <span class="dash-badge ${badgeClass(o.status)}">${o.status}</span>
                 </div>
@@ -332,55 +289,57 @@
     }
 
     /* ===== ORDERS ===== */
-    function nextOrderNo(orders) {
-        let max = 0;
-        orders.forEach((o) => {
-            const m = String(o.orderNo || '').match(/KC-(\d+)/);
-            if (m) max = Math.max(max, parseInt(m[1], 10));
-        });
-        return 'KC-' + String(max + 1).padStart(4, '0');
-    }
-
     function filteredOrders() {
-        return getOrders().filter((o) => {
+        return ordersData.filter((o) => {
             const term = orderSearch;
             const matchSearch = !term ||
                 (o.customer && o.customer.toLowerCase().includes(term)) ||
                 (o.contact && o.contact.toLowerCase().includes(term)) ||
-                (o.orderNo && o.orderNo.toLowerCase().includes(term));
+                (orderNoDisplay(o.order_no) && orderNoDisplay(o.order_no).toLowerCase().includes(term));
             const matchStatus = !orderStatusFilter || o.status === orderStatusFilter;
             return matchSearch && matchStatus;
         });
     }
 
-    function renderOrders() {
+    async function renderOrders() {
+        const orders = await fetchOrders();
+        ordersData = orders;
         let list = filteredOrders();
-        list.sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
+        list.sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
         if (sortDir === 'desc') list.reverse();
 
         const tbody = document.getElementById('dashOrdersBody');
         const empty = document.getElementById('dashOrdersEmpty');
+        const errorContainer = document.getElementById('dashOrdersError');
+
         if (list.length === 0) {
             tbody.innerHTML = '';
             empty.style.display = 'block';
+            hidePageError('dashOrdersError');
         } else {
             empty.style.display = 'none';
-            tbody.innerHTML = list.map((o) => `
+            hidePageError('dashOrdersError');
+            tbody.innerHTML = list.map((o) => {
+                const newBadge = (o.source === 'website' && o.status === 'Pending')
+                    ? '<span class="dash-badge dash-badge-new" style="margin-left:0.5rem;background:var(--gold);">New</span>'
+                    : '';
+                return `
                 <tr>
-                    <td><span class="dash-order-no">${escapeHtml(o.orderNo)}</span></td>
-                    <td>${escapeHtml(o.customer)}</td>
+                    <td><span class="dash-order-no">${escapeHtml(orderNoDisplay(o.order_no))}</span></td>
+                    <td>${escapeHtml(o.customer)}${newBadge}</td>
                     <td>${escapeHtml(o.contact)}</td>
-                    <td>${formatDate(o.eventDate)}</td>
-                    <td>${escapeHtml(o.cakeType)}</td>
-                    <td>${formatPeso(o.totalAmount)}</td>
-                    <td>${formatPeso((Number(o.totalAmount) || 0) - (Number(o.downpayment) || 0))}</td>
+                    <td>${formatDate(o.event_date)}</td>
+                    <td>${escapeHtml(o.cake_type)}</td>
+                    <td>${formatPeso(o.total_amount)}</td>
+                    <td>${formatPeso((Number(o.total_amount) || 0) - (Number(o.downpayment) || 0))}</td>
                     <td><span class="dash-badge ${badgeClass(o.status)}">${o.status}</span></td>
                     <td>
                         <button class="dash-btn dash-btn-ghost dash-btn-sm" data-edit="${escapeHtml(o.id)}" title="Edit">Edit</button>
                         <button class="dash-btn dash-btn-ghost dash-btn-sm" data-del="${escapeHtml(o.id)}" title="Delete">Delete</button>
                     </td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
             tbody.querySelectorAll('[data-edit]').forEach((btn) => {
                 btn.addEventListener('click', () => openOrderEdit(btn.dataset.edit));
             });
@@ -391,23 +350,22 @@
     }
 
     function openOrderEdit(id) {
-        const orders = getOrders();
-        const o = id ? orders.find((x) => x.id === id) : null;
+        const o = ordersData.find((x) => x.id === id) || null;
         document.getElementById('dashOrderModalTitle').textContent = o ? 'Edit Order' : 'Add Order';
         document.getElementById('dashOrderEditId').value = o ? o.id : '';
         document.getElementById('dashOrderCustomer').value = o ? o.customer : '';
         document.getElementById('dashOrderContact').value = o ? o.contact : '';
-        document.getElementById('dashOrderEventDate').value = o ? o.eventDate : '';
-        document.getElementById('dashOrderCakeType').value = o ? o.cakeType : '';
+        document.getElementById('dashOrderEventDate').value = o ? o.event_date : '';
+        document.getElementById('dashOrderCakeType').value = o ? o.cake_type : '';
         document.getElementById('dashOrderDetails').value = o ? o.details || '' : '';
-        document.getElementById('dashOrderTotal').value = o ? o.totalAmount || 0 : 0;
+        document.getElementById('dashOrderTotal').value = o ? o.total_amount || 0 : 0;
         document.getElementById('dashOrderDownpayment').value = o ? o.downpayment || 0 : 0;
         document.getElementById('dashOrderStatus').value = o ? o.status : 'Pending';
         document.getElementById('dashOrderError').style.display = 'none';
         openModal(document.getElementById('dashOrderModal'));
     }
 
-    function saveOrderFromForm() {
+    async function saveOrderFromForm() {
         const customer = document.getElementById('dashOrderCustomer').value.trim();
         const contact = document.getElementById('dashOrderContact').value.trim();
         const eventDate = document.getElementById('dashOrderEventDate').value;
@@ -425,40 +383,43 @@
             return;
         }
 
-        const orders = getOrders();
-        const existing = editId ? orders.find((o) => o.id === editId) : null;
-        const now = new Date().toISOString();
+        const existing = editId ? ordersData.find((o) => o.id === editId) : null;
         const order = {
-            id: editId || uid(),
-            orderNo: (existing && existing.orderNo) || nextOrderNo(orders),
+            id: editId || null,
+            order_no: (existing && existing.order_no) || null,
             customer,
             contact,
-            eventDate,
-            cakeType,
+            event_date: eventDate,
+            cake_type: cakeType,
             details,
-            totalAmount: total,
+            total_amount: total,
             downpayment,
             status,
-            createdAt: (existing && existing.createdAt) || now
+            source: 'dashboard'
         };
-        const updated = editId ? orders.map((o) => (o.id === editId ? order : o)) : [...orders, order];
-        if (!saveOrders(updated)) {
-            errorEl.textContent = 'Could not save order. Storage may be full.';
+
+        try {
+            await saveOrder(order);
+            closeModal(document.getElementById('dashOrderModal'));
+            renderOrders();
+            renderOverview();
+        } catch (err) {
+            errorEl.textContent = 'Could not save order. Check your connection and try again.';
             errorEl.style.display = 'block';
-            return;
         }
-        closeModal(document.getElementById('dashOrderModal'));
-        renderOrders();
-        renderOverview();
     }
 
     function requestDeleteOrder(id) {
-        const o = getOrders().find((x) => x.id === id);
-        showConfirm('Delete order', 'Delete order ' + escapeHtml(o.orderNo) + '?', () => {
-            const orders = getOrders().filter((x) => x.id !== id);
-            saveOrders(orders);
-            renderOrders();
-            renderOverview();
+        const o = ordersData.find((x) => x.id === id);
+        if (!o) return;
+        showConfirm('Delete order', 'Delete order ' + escapeHtml(orderNoDisplay(o.order_no)) + '?', async () => {
+            try {
+                await deleteOrder(id);
+                renderOrders();
+                renderOverview();
+            } catch (err) {
+                showConfirm('Error', 'Could not delete order. Check your connection.', () => {});
+            }
         });
     }
 
@@ -469,15 +430,15 @@
         ];
         list.forEach((o) => {
             rows.push([
-                o.orderNo,
+                orderNoDisplay(o.order_no),
                 o.customer,
                 o.contact,
-                o.eventDate,
-                o.cakeType,
-                o.totalAmount,
-                (Number(o.totalAmount) || 0) - (Number(o.downpayment) || 0),
+                o.event_date,
+                o.cake_type,
+                o.total_amount,
+                (Number(o.total_amount) || 0) - (Number(o.downpayment) || 0),
                 o.status,
-                o.createdAt
+                o.created_at
             ]);
         });
         const csv = rows.map((r) => r.map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
@@ -491,11 +452,11 @@
     }
 
     /* ===== GALLERY ===== */
-    function renderGallery() {
-        const gallery = getGallery();
+    async function renderGallery() {
+        const gallery = await fetchGallery();
         const grid = document.getElementById('dashGalleryGrid');
         const empty = document.getElementById('dashGalleryEmpty');
-        if (gallery.length === 0) {
+        if (!gallery || gallery.length === 0) {
             grid.innerHTML = '';
             empty.style.display = 'block';
             return;
@@ -503,14 +464,14 @@
         empty.style.display = 'none';
         grid.innerHTML = gallery.map((item, i) => `
             <div class="dash-gallery-card">
-                <img class="dash-gallery-thumb" src="${escapeHtml(item.src)}" alt="${escapeHtml(item.title)}">
+                <img class="dash-gallery-thumb" src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.title)}">
                 <div class="dash-gallery-body">
                     <div class="dash-gallery-head">
                         <span class="dash-gallery-title">${escapeHtml(item.title)}</span>
                         <span class="dash-gallery-cat">${escapeHtml(item.category)}</span>
                     </div>
                     <label class="dash-toggle">
-                        <input type="checkbox" data-vis="${escapeHtml(item.id)}" ${item.visible ? 'checked' : ''}>
+                        <input type="checkbox" data-id="${escapeHtml(item.id)}" ${item.visible ? 'checked' : ''}>
                         <span>Visible</span>
                     </label>
                     <div class="dash-gallery-actions">
@@ -523,13 +484,15 @@
             </div>
         `).join('');
 
-        grid.querySelectorAll('[data-vis]').forEach((cb) => {
-            cb.addEventListener('change', () => {
-                const g = getGallery();
-                const item = g.find((x) => x.id === cb.dataset.vis);
-                if (item) {
-                    item.visible = cb.checked;
-                    saveGallery(g);
+        grid.querySelectorAll('[data-id]').forEach((cb) => {
+            cb.addEventListener('change', async () => {
+                const id = cb.dataset.id;
+                const item = gallery.find((x) => x.id === id);
+                if (!item) return;
+                try {
+                    await saveGalleryItem({ id, title: item.title, category: item.category, image_url: item.image_url, storage_path: item.storage_path, visible: cb.checked, sort_order: item.sort_order });
+                } catch (err) {
+                    cb.checked = !cb.checked;
                 }
             });
         });
@@ -547,51 +510,70 @@
         });
     }
 
-    function moveGalleryItem(id, dir) {
-        const g = getGallery();
-        const i = g.findIndex((x) => x.id === id);
+    async function moveGalleryItem(id, dir) {
+        const gallery = await fetchGallery();
+        const i = gallery.findIndex((x) => x.id === id);
         const target = i + dir;
-        if (target < 0 || target >= g.length) return;
-        [g[i], g[target]] = [g[target], g[i]];
-        saveGallery(g);
-        renderGallery();
+        if (target < 0 || target >= gallery.length) return;
+        const a = gallery[i];
+        const b = gallery[target];
+        const temp = a.sort_order;
+        a.sort_order = b.sort_order;
+        b.sort_order = temp;
+        try {
+            await saveGalleryItem(a);
+            await saveGalleryItem(b);
+            renderGallery();
+        } catch (err) {
+            // ignore
+        }
     }
 
     function requestDeleteGallery(id) {
-        const item = getGallery().find((x) => x.id === id);
-        showConfirm('Delete cake', 'Delete "' + escapeHtml(item.title) + '" from the gallery?', () => {
-            const g = getGallery().filter((x) => x.id !== id);
-            saveGallery(g);
-            renderGallery();
+        const gallery = ordersData; // not used, fetch fresh
+        fetchGallery().then((g) => {
+            const item = g.find((x) => x.id === id);
+            if (!item) return;
+            showConfirm('Delete cake', 'Delete "' + escapeHtml(item.title) + '" from the gallery?', async () => {
+                try {
+                    await deleteGalleryItem(id, item.storage_path);
+                    renderGallery();
+                } catch (err) {
+                    showConfirm('Error', 'Could not delete cake. Check your connection.', () => {});
+                }
+            });
         });
     }
 
     function openGalleryEdit(id) {
-        const item = id ? getGallery().find((x) => x.id === id) : null;
         editingGalleryId = id || null;
-        galleryNewSrc = null;
-        document.getElementById('dashGalleryModalTitle').textContent = item ? 'Edit Cake' : 'Add Cake';
-        document.getElementById('dashGalleryEditId').value = item ? item.id : '';
-        document.getElementById('dashGalleryTitle').value = item ? item.title : '';
-        document.getElementById('dashGalleryCategory').value = item ? item.category : 'birthday';
-        document.getElementById('dashGalleryVisible').checked = item ? item.visible : true;
-        const preview = document.getElementById('dashGalleryPreview');
-        preview.src = item ? item.src : '';
-        preview.style.display = item ? 'block' : 'none';
-        document.getElementById('dashGalleryImage').value = '';
-        document.getElementById('dashGalleryImageReq').textContent = item ? '' : '*';
-        document.getElementById('dashGalleryError').style.display = 'none';
-        openModal(document.getElementById('dashGalleryModal'));
+        galleryNewFile = null;
+        galleryOldStoragePath = null;
+        fetchGallery().then((gallery) => {
+            const item = id ? gallery.find((x) => x.id === id) : null;
+            document.getElementById('dashGalleryModalTitle').textContent = item ? 'Edit Cake' : 'Add Cake';
+            document.getElementById('dashGalleryEditId').value = item ? item.id : '';
+            document.getElementById('dashGalleryTitle').value = item ? item.title : '';
+            document.getElementById('dashGalleryCategory').value = item ? item.category : 'birthday';
+            document.getElementById('dashGalleryVisible').checked = item !== undefined ? item.visible : true;
+            const preview = document.getElementById('dashGalleryPreview');
+            preview.src = item ? item.image_url : '';
+            preview.style.display = item ? 'block' : 'none';
+            document.getElementById('dashGalleryImage').value = '';
+            document.getElementById('dashGalleryImageReq').textContent = item ? '' : '*';
+            document.getElementById('dashGalleryError').style.display = 'none';
+            if (item && item.storage_path) galleryOldStoragePath = item.storage_path;
+            openModal(document.getElementById('dashGalleryModal'));
+        });
     }
 
-    document.getElementById('dashGalleryImage').addEventListener('change', async (e) => {
+    document.getElementById('dashGalleryImage').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        galleryNewFile = file;
         const preview = document.getElementById('dashGalleryPreview');
-        const dataUrl = await readFile(file);
-        preview.src = dataUrl;
+        preview.src = URL.createObjectURL(file);
         preview.style.display = 'block';
-        galleryNewSrc = await resizeImage(dataUrl, 1000, 0.8);
     });
 
     document.getElementById('dashGalleryForm').addEventListener('submit', async (e) => {
@@ -605,52 +587,103 @@
             errorEl.style.display = 'block';
             return;
         }
-        const gallery = getGallery();
-        let src;
+
+        let image_url = '';
+        let storage_path = null;
+
         if (editingGalleryId) {
-            const existing = gallery.find((x) => x.id === editingGalleryId);
-            src = galleryNewSrc || (existing ? existing.src : '');
+            // Edit: keep existing image unless replaced
+            const existing = ordersData; // placeholder
+            fetchGallery().then(async (gallery) => {
+                const item = gallery.find((x) => x.id === editingGalleryId);
+                if (!item) return;
+                image_url = item.image_url;
+                storage_path = item.storage_path || null;
+
+                if (galleryNewFile) {
+                    try {
+                        const resized = await resizeImage(galleryNewFile, 1400, 0.85);
+                        const blob = await fetch(resized).then((r) => r.blob());
+                        const safeName = galleryNewFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                        const path = `${Date.now()}-${safeName}`;
+                        const { error: upErr } = await sb.storage.from('cake-images').upload(path, blob);
+                        if (upErr) throw upErr;
+                        const { data: pub } = sb.storage.from('cake-images').getPublicUrl(path);
+                        image_url = pub.publicUrl;
+                        storage_path = path;
+                        // Delete old file if it had a storage path
+                        if (item.storage_path) {
+                            try { await sb.storage.from('cake-images').remove([item.storage_path]); } catch (e) { /* ignore */ }
+                        }
+                    } catch (err) {
+                        errorEl.textContent = 'Image upload failed. Check your connection.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                }
+
+                try {
+                    await saveGalleryItem({
+                        id: editingGalleryId,
+                        title,
+                        category,
+                        image_url,
+                        storage_path,
+                        visible,
+                        sort_order: item.sort_order
+                    });
+                    closeModal(document.getElementById('dashGalleryModal'));
+                    renderGallery();
+                } catch (err) {
+                    errorEl.textContent = 'Could not save cake. Check your connection.';
+                    errorEl.style.display = 'block';
+                }
+            });
         } else {
-            if (!galleryNewSrc) {
+            // Add: image required
+            if (!galleryNewFile) {
                 errorEl.textContent = 'Please choose an image';
                 errorEl.style.display = 'block';
                 return;
             }
-            src = galleryNewSrc;
-        }
-        const entry = { id: editingGalleryId || uid(), src, title, category, visible };
-        const updated = editingGalleryId
-            ? gallery.map((x) => (x.id === editingGalleryId ? entry : x))
-            : [...gallery, entry];
-        if (!saveGallery(updated)) {
-            errorEl.textContent = 'Could not save. Local storage may be full. Export a backup and use smaller images.';
-            errorEl.style.display = 'block';
-            return;
-        }
-        closeModal(document.getElementById('dashGalleryModal'));
-        renderGallery();
-    });
+            try {
+                const resized = await resizeImage(galleryNewFile, 1400, 0.85);
+                const blob = await fetch(resized).then((r) => r.blob());
+                const safeName = galleryNewFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                const path = `${Date.now()}-${safeName}`;
+                const { error: upErr } = await sb.storage.from('cake-images').upload(path, blob);
+                if (upErr) throw upErr;
+                const { data: pub } = sb.storage.from('cake-images').getPublicUrl(path);
+                image_url = pub.publicUrl;
+                storage_path = path;
 
-    document.getElementById('dashResetGallery').addEventListener('click', () => {
-        showConfirm('Reset gallery', 'Restore the default gallery? All custom gallery items will be removed.', () => {
-            saveGallery(getDefaultGallery());
-            renderGallery();
-        });
+                // Get highest sort_order
+                const gallery = await fetchGallery();
+                const maxSort = gallery.reduce((max, item) => Math.max(max, Number(item.sort_order || 0)), 0);
+
+                await saveGalleryItem({
+                    title,
+                    category,
+                    image_url,
+                    storage_path,
+                    visible,
+                    sort_order: maxSort + 1
+                });
+                closeModal(document.getElementById('dashGalleryModal'));
+                renderGallery();
+            } catch (err) {
+                errorEl.textContent = 'Image upload failed. Check your connection.';
+                errorEl.style.display = 'block';
+            }
+        }
     });
 
     /* ===== SETTINGS ===== */
     document.getElementById('dashPasswordForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const admin = getAdmin();
-        const current = document.getElementById('dashPassCurrent').value;
         const newPass = document.getElementById('dashPassNew').value;
         const confirm = document.getElementById('dashPassConfirm').value;
         const errorEl = document.getElementById('dashPassError');
-        if (!admin || (await sha256(current)) !== admin.passwordHash) {
-            errorEl.textContent = 'Current password is incorrect';
-            errorEl.style.display = 'block';
-            return;
-        }
         if (newPass.length < 6) {
             errorEl.textContent = 'New password must be at least 6 characters';
             errorEl.style.display = 'block';
@@ -662,54 +695,37 @@
             return;
         }
         try {
-            saveAdmin({ username: admin.username, passwordHash: await sha256(newPass) });
+            const { error } = await sb.auth.updateUser({ password: newPass });
+            if (error) throw error;
             errorEl.style.display = 'none';
             document.getElementById('dashPasswordForm').reset();
         } catch (err) {
-            errorEl.textContent = 'Could not save password';
+            errorEl.textContent = 'Could not change password';
             errorEl.style.display = 'block';
         }
     });
 
-    document.getElementById('dashExportBackup').addEventListener('click', () => {
-        const backup = { gallery: getGallery(), orders: getOrders() };
-        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'kookielicious-backup.json';
-        a.click();
-        URL.revokeObjectURL(url);
-    });
-
-    document.getElementById('dashImportFile').addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    document.getElementById('dashExportBackup').addEventListener('click', async () => {
         try {
-            const text = await readFile(file);
-            const data = JSON.parse(text);
-            if (!data || !Array.isArray(data.gallery) || !Array.isArray(data.orders)) {
-                throw new Error('Invalid backup format');
-            }
-            showConfirm('Import backup', 'This will replace all current gallery and orders data. Continue?', () => {
-                saveGallery(data.gallery);
-                saveOrders(data.orders);
-                renderCurrentPage();
-                e.target.value = '';
-            });
+            await exportBackup();
         } catch (err) {
-            alert('Invalid backup file: ' + err.message);
+            // silent
         }
     });
 
     document.getElementById('dashDeleteAllOrders').addEventListener('click', () => {
-        showConfirm('Delete all orders', 'Delete every order? This cannot be undone.', () => {
-            saveOrders([]);
-            renderOrders();
-            renderOverview();
+        showConfirm('Delete all orders', 'Delete every order? This cannot be undone.', async () => {
+            try {
+                await deleteAllOrders();
+                renderOrders();
+                renderOverview();
+            } catch (err) {
+                showConfirm('Error', 'Could not delete orders. Check your connection.', () => {});
+            }
         });
     });
 
+    /* ===== RENDER CURRENT PAGE ===== */
     function renderCurrentPage() {
         const active = document.querySelector('.dash-page.dash-page-active');
         if (!active) return;
@@ -760,6 +776,9 @@
     });
     document.getElementById('dashAddOrder').addEventListener('click', () => openOrderEdit(null));
     document.getElementById('dashExportCsv').addEventListener('click', exportCsv);
+    document.getElementById('dashRefreshOrders').addEventListener('click', () => {
+        renderOrders();
+    });
     document.getElementById('dashOrderSearch').addEventListener('input', (e) => {
         orderSearch = e.target.value.toLowerCase();
         renderOrders();
@@ -768,10 +787,13 @@
         orderStatusFilter = e.target.value;
         renderOrders();
     });
-    document.getElementById('dashOrdersTable').querySelector('th[data-sort="eventDate"]').addEventListener('click', () => {
-        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-        renderOrders();
-    });
+    const sortTh = document.getElementById('dashOrdersTable').querySelector('th[data-sort="eventDate"]');
+    if (sortTh) {
+        sortTh.addEventListener('click', () => {
+            sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            renderOrders();
+        });
+    }
 
     /* Gallery buttons */
     document.getElementById('dashAddCake').addEventListener('click', () => openGalleryEdit(null));
@@ -793,15 +815,15 @@
     /* ===== INIT ===== */
     document.addEventListener('DOMContentLoaded', () => {
         initNav();
-        if (sessionActive()) {
-            loginPage.hidden = true;
-            shell.hidden = false;
-            topbarUser.textContent = (getAdmin() || {}).username || '';
-            showPage('overview');
-        } else {
-            loginPage.hidden = false;
-            shell.hidden = true;
-            renderAuth();
-        }
+        renderLogin();
+        sb.auth.getSession().then(({ data }) => {
+            setAuthUI(!!data.session, data.session ? data.session.user : null);
+        });
+        sb.auth.onAuthStateChange((event, session) => {
+            setAuthUI(event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED', session ? session.user : null);
+            if (event === 'SIGNED_OUT') {
+                stopAutoRefresh();
+            }
+        });
     });
 })();
